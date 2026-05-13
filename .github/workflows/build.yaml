@@ -26,7 +26,7 @@ jobs:
 
       - name: Build (PR — amd64, load for smoke test)
         if: github.event_name == 'pull_request'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -60,7 +60,7 @@ jobs:
 
       - name: Build & push (main — multi-arch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
