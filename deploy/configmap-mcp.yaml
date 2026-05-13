@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claude-mcp-config
+data:
+  .mcp.json: |
+    {
+      "mcpServers": {
+        "kura": {
+          "type": "sse",
+          "url": "http://kura.kura.svc.cluster.local:8080/mcp"
+        }
+      }
+    }

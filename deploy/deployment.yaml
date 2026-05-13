@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-remote
+  labels:
+    app: claude-remote
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: claude-remote
+  template:
+    metadata:
+      labels:
+        app: claude-remote
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: claude
+          image: ghcr.io/OWNER/claude-remote:2.1.140
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            exec:
+              command: ["claude-health"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            # Optional: mount a Secret containing credentials.json to seed
+            # the state PVC on first boot. Omit this and the entrypoint
+            # falls into bootstrap mode — kubectl exec, claude auth login,
+            # restart the pod.
+            # - name: oauth-creds
+            #   mountPath: /var/run/secrets/claude
+            #   readOnly: true
+            # Mount the whole home dir. claude auth login writes both
+            # ~/.claude/.credentials.json and ~/.claude.json; subdir-only
+            # mounts lose the latter and break remote-control.
+            - name: claude-state
+              mountPath: /home/claude
+            - name: mcp-config
+              mountPath: /home/claude/.claude/.mcp.json
+              subPath: .mcp.json
+              readOnly: true
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        # - name: oauth-creds
+        #   secret:
+        #     secretName: claude-oauth
+        #     items:
+        #       - key: credentials.json
+        #         path: credentials.json
+        - name: claude-state
+          persistentVolumeClaim:
+            claimName: claude-state
+        - name: mcp-config
+          configMap:
+            name: claude-mcp-config
+            items:
+              - key: .mcp.json
+                path: .mcp.json
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: claude-workspace

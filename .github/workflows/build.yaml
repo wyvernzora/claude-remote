@@ -1,0 +1,72 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Extract Claude Code version from package.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.dependencies["@anthropic-ai/claude-code"]' package.json)
+          echo "claude_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build (PR — amd64, load for smoke test)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          tags: claude-remote:test
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          # Bypass entrypoint for one-shot smoke runs (entrypoint requires an OAuth token).
+          docker run --rm --entrypoint claude   claude-remote:test --version
+          docker run --rm --entrypoint mcp-ctl  claude-remote:test --help
+          docker run --rm --entrypoint sh       claude-remote:test -c 'which tmux && which git && which rg && which jq && which claude-health'
+          docker run --rm --entrypoint sh       claude-remote:test -c '! command -v node && ! command -v npm'
+          # claude-health exits non-zero when no tmux session — confirm it runs and reports correctly.
+          docker run --rm --entrypoint sh       claude-remote:test -c 'claude-health; rc=$?; test $rc -ne 0 && echo "ok: health=$rc (no session, expected)"'
+          # Volumes declared
+          docker inspect claude-remote:test --format '{{json .Config.Volumes}}' | grep -q '"/home/claude"'
+          docker inspect claude-remote:test --format '{{json .Config.Volumes}}' | grep -q '"/workspace"'
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push (main — multi-arch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/claude-remote:${{ steps.version.outputs.claude_version }}
+            ghcr.io/${{ github.repository_owner }}/claude-remote:latest
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

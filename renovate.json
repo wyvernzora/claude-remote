@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["@anthropic-ai/claude-code"],
+      "groupName": "claude-code",
+      "labels": ["claude-code-bump"],
+      "schedule": ["before 9am on monday"],
+      "prBodyNotes": [
+        "Release notes: https://github.com/anthropics/claude-code/releases"
+      ]
+    },
+    {
+      "matchPackageNames": ["@anthropic-ai/claude-code"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "matchPackageNames": ["@anthropic-ai/claude-code"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": false
+  }
+}

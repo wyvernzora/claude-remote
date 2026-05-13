@@ -1,0 +1,7 @@
+.git
+.github
+README.md
+renovate.json
+*.md
+node_modules
+scratch
