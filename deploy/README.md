@@ -6,7 +6,7 @@ Not exhaustive: no NetworkPolicy, no namespace, no horizontal hardening. Add tho
 
 ## Pieces
 
-- `configmap-mcp.yaml` — MCP config mounted at `/home/claude/.claude/.mcp.json` via `subPath`. Note: `subPath` mounts do not receive live ConfigMap updates; rolling the Deployment is required to pick up changes.
+- `configmap-mcp.yaml` — MCP server registry. Mounted as a directory at `/var/run/config/claude/`; entrypoint reads `.mcp.json` from there and merges its `mcpServers` map into `~/.claude.json` user-scope on every boot. ConfigMap updates require a pod restart to take effect (entrypoint only re-merges at startup).
 - `secret-oauth.example.yaml` — optional template for pre-seeding credentials via Secret. Default flow logs in inside the pod and skips the Secret entirely.
 - `pvc.yaml` — two PVCs:
   - `claude-state` (2Gi) → `/home/claude` (whole home dir; holds `.claude/` and root-level `.claude.json`). claude auth login writes to both locations and remote-control reads from both; subdir-only mounts break the org-eligibility check on restart.

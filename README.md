@@ -114,7 +114,7 @@ Both are chowned to uid 1001 (the `claude` user) at image build time.
 
 ## MCP configuration
 
-Drop a `.mcp.json` into `/home/claude/.claude/` (via the volume mount). Example:
+Mount a `.mcp.json` at `/var/run/config/claude/.mcp.json` (read-only is fine). Entrypoint merges its `mcpServers` map into `~/.claude.json` user-scope on every boot, so servers apply across any cwd, no per-project approval needed. Example file:
 
 ```json
 {

@@ -50,9 +50,12 @@ spec:
             # mounts lose the latter and break remote-control.
             - name: claude-state
               mountPath: /home/claude
+            # Entrypoint reads MCP servers from this path and merges them
+            # into ~/.claude.json mcpServers (user-scope). Directory mount,
+            # so ConfigMap updates propagate without a Deployment rollout
+            # (entrypoint re-merges on pod restart only).
             - name: mcp-config
-              mountPath: /home/claude/.claude/.mcp.json
-              subPath: .mcp.json
+              mountPath: /var/run/config/claude
               readOnly: true
             - name: workspace
               mountPath: /workspace
@@ -69,9 +72,6 @@ spec:
         - name: mcp-config
           configMap:
             name: claude-mcp-config
-            items:
-              - key: .mcp.json
-                path: .mcp.json
         - name: workspace
           persistentVolumeClaim:
             claimName: claude-workspace

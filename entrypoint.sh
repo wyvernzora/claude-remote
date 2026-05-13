@@ -43,30 +43,41 @@ if [[ $BOOTSTRAP_MODE -eq 1 ]]; then
   exec tail -f /dev/null
 fi
 
-if [[ ! -f /home/claude/.claude/.mcp.json ]]; then
-  echo "WARNING: MCP config not found at /home/claude/.claude/.mcp.json" >&2
+MCP_CONFIG_SRC=/var/run/config/claude/.mcp.json
+if [[ ! -f "$MCP_CONFIG_SRC" ]]; then
+  echo "WARNING: MCP config not found at $MCP_CONFIG_SRC" >&2
   echo "Agent will start with no MCP servers." >&2
 fi
 
-# Pre-set non-interactive flags in ~/.claude.json so remote-control doesn't
-# block on prompts that no human is around to answer:
-#  - hasTrustDialogAccepted (per-project): "Workspace not trusted."
-#  - remoteDialogSeen (global):            first-time "Enable Remote Control?" dialog
-#  - remoteControlSpawnMode (global):      spawn-mode "Enable Remote Control? (y/n)" readline prompt
+# Patch ~/.claude.json so remote-control doesn't block on prompts that no
+# human is around to answer, and merge in user-scope MCP servers from the
+# mounted ConfigMap (if present):
+#  - hasTrustDialogAccepted (per-project):     "Workspace not trusted."
+#  - remoteDialogSeen (global):                first-time "Enable Remote Control?" dialog
+#  - remoteControlSpawnMode (global):          spawn-mode "Enable Remote Control? (y/n)" prompt
+#  - mcpServers (global / user-scope):         merged from $MCP_CONFIG_SRC if mounted
 # The file exists post-login; in bootstrap mode it's untouched.
 CLAUDE_CONFIG=/home/claude/.claude.json
 if [[ -f "$CLAUDE_CONFIG" ]]; then
-  tmp=$(mktemp)
-  if jq '
+  jq_args=()
+  jq_filter='
         . + {remoteDialogSeen: true, remoteControlSpawnMode: "same-dir"} |
         .projects["/workspace"] |= ((. // {}) + {hasTrustDialogAccepted: true})
-      ' "$CLAUDE_CONFIG" > "$tmp" 2>/dev/null; then
+      '
+  if [[ -f "$MCP_CONFIG_SRC" ]]; then
+    jq_args+=("--slurpfile" "mcp" "$MCP_CONFIG_SRC")
+    jq_filter+='
+        | .mcpServers = ((.mcpServers // {}) + ($mcp[0].mcpServers // {}))
+      '
+  fi
+  tmp=$(mktemp)
+  if jq "${jq_args[@]}" "$jq_filter" "$CLAUDE_CONFIG" > "$tmp" 2>/dev/null; then
     mv "$tmp" "$CLAUDE_CONFIG"
     chmod 600 "$CLAUDE_CONFIG"
-    echo "Patched ~/.claude.json: workspace trusted, dialogs pre-acknowledged"
+    echo "Patched ~/.claude.json: dialogs pre-acknowledged, /workspace trusted, MCP servers merged"
   else
     rm -f "$tmp"
-    echo "WARNING: failed to patch flags in $CLAUDE_CONFIG; remote-control may block on prompts" >&2
+    echo "WARNING: failed to patch $CLAUDE_CONFIG; remote-control may block on prompts" >&2
   fi
 fi
 
