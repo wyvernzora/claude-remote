@@ -145,6 +145,8 @@ mcp-ctl --help
 Env vars the entrypoint reads:
 
 - `CLAUDE_PERMISSION_MODE` — passed as `--permission-mode` to `claude remote-control`. Default `auto`. Values: `acceptEdits`, `auto`, `bypassPermissions`, `default`, `dontAsk`, `plan`.
+- `CLAUDE_REMOTE_NAME` — passed as `--name` to `claude remote-control` (display name in claude.ai/code). Default: hostname-derived.
+- `CLAUDE_REMOTE_CREATE_SESSION_IN_DIR` — when `"false"`, adds `--no-create-session-in-dir`. Default `true`. Set `false` to avoid a fresh pre-created session on every pod restart.
 - `TMUX_SESSION` — tmux session name claude runs in. Default `claude`. Used by `mcp-ctl` and `claude-health`.
 
 ## Helper: `claude-health`

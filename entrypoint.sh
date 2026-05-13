@@ -86,8 +86,17 @@ SESSION_LOG=/tmp/claude/session.log
 : > "$SESSION_LOG"
 
 PERMISSION_MODE="${CLAUDE_PERMISSION_MODE:-auto}"
+RC_ARGS=("--permission-mode" "$PERMISSION_MODE")
+if [[ -n "${CLAUDE_REMOTE_NAME:-}" ]]; then
+  RC_ARGS+=("--name" "$CLAUDE_REMOTE_NAME")
+fi
+if [[ "${CLAUDE_REMOTE_CREATE_SESSION_IN_DIR:-true}" == "false" ]]; then
+  RC_ARGS+=("--no-create-session-in-dir")
+fi
+RC_CMD="claude remote-control $(printf '%q ' "${RC_ARGS[@]}")"
+echo "Launching: $RC_CMD"
 tmux new-session -d -s claude \
-  "claude remote-control --permission-mode $PERMISSION_MODE 2>&1 | tee $SESSION_LOG"
+  "$RC_CMD 2>&1 | tee $SESSION_LOG"
 
 echo "Waiting for remote-control session URL..."
 for i in {1..60}; do
