@@ -4,6 +4,6 @@
   "private": true,
   "description": "Container image build for in-cluster Claude Code with remote-control",
   "dependencies": {
-    "@anthropic-ai/claude-code": "2.1.195"
+    "@anthropic-ai/claude-code": "2.1.201"
   }
 }
