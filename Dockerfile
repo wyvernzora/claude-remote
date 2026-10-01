@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.23
+# syntax=docker/dockerfile:1.27
 
 # ---- builder ----
 FROM node:22-slim AS builder
